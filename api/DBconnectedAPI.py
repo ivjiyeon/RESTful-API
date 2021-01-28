@@ -1,6 +1,7 @@
-import flask
-from flask import request, jsonify, json
+import flask, datetime
+from flask import request, jsonify
 from flask_mongoengine import MongoEngine
+from mongoengine.queryset.visitor import Q
 
 
 app = flask.Flask(__name__)
@@ -59,15 +60,7 @@ def create_record():
     id = task.id
 
     return {'id': str(id)}, 200
-    # record = json.loads(request.data)
-    # task = Task(taskid=record['id'],
-    #             description=record['description'],
-    #             title=record['title'],
-    #             done=record['done'],
-    #             expiryDate=record['expiryDate'],
-    #             expiryTime=record['expiryTime'])
-    # task.save()
-    # return jsonify(task)
+
 
 @app.route('/tasks/update/<int:id>', methods=['PUT'])
 def update_record(id):
@@ -75,25 +68,26 @@ def update_record(id):
     Task.objects.get(taskid=id).update(**data)
 
     return '', 200
-    # record = json.loads(request.data)
-    # task = Task.objects(taskid=record['id']).first()
-    # if not task:
-    #     return jsonify({'error': 'data not found'})
-    # else:
-    #     task.update(expiryTime=record['expiryTime'])
-    # return jsonify(task)
+
 
 @app.route('/tasks/delete/<int:id>', methods=['DELETE'])
 def delete_record(id):
     Task.objects.get(taskid=id).delete()
     return '', 200
 
-    # record = json.loads(request.data)
-    # task = Task.objects(taskid=record['id']).first()
-    # if not task:
-    #     return jsonify({'error': 'data not found'})
-    # else:
-    #     task.delete()
-    # return jsonify(task)
+@app.route('/notification', methods=['GET'])
+def check_expiry():
+    now = datetime.datetime.now()
+    fif_minutes = datetime.timedelta(minutes=15)
+    fut_time = now + fif_minutes
+    exprNow = Task.objects(Q(expiryDate=fut_time.strftime("%d/%m/%Y")) & Q(expiryTime=fut_time.strftime("%H:%M")))
+    if exprNow:
+        for task in exprNow:
+            message = ["\"" + task["title"] + "\"" + " is expiring in 15 minutes"]
+            message.append("Current time is " + str(now))
+        return jsonify(message)
+    else:
+        return ('', 204)
+
 
 app.run()

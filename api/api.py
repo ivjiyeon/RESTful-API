@@ -1,8 +1,8 @@
-import datetime, logging
+import datetime
 
 import flask
 from flask import request, jsonify, abort
-from requests import session
+
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -38,28 +38,6 @@ def task_id(task_id):
         abort(404)
     return jsonify({'task': task[0]})
 
-    # # Check if an ID was provided as part of the URL.
-    # # If ID is provided, assign it to a variable.
-    # # If no ID is provided, display an error in the browser.
-    # if 'id' in request.args:
-    #     id = int(request.args['id'])
-    # else:
-    #     return "Error: No id field provided. Please specify an id."
-    #
-    # # Create an empty list for our results
-    # results = []
-    #
-    # # Loop through the data and match results that fit the requested ID.
-    # # IDs are unique, but other fields might return many results
-    # for task in tasks:
-    #     if task['id'] == id:
-    #         results.append(task)
-    #
-    # if results == []:
-    #     abort(404)
-    # # Use the jsonify function from Flask to convert our list of
-    # # Python dictionaries to the JSON format.
-    # return jsonify(results)
 
 @app.route('/tasks/create', methods=['POST'])
 def create_task():
