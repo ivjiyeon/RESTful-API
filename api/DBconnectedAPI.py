@@ -1,31 +1,28 @@
 import flask
-from flask import request, jsonify
-import sqlite3
+from flask import request, jsonify, json
+from flask_mongoengine import MongoEngine
+
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
+app.config['MONGODB_SETTINGS'] = {
+    'db': 'Assessment',
+    'host': 'localhost',
+    'port': 27017
+}
+db = MongoEngine()
+db.init_app(app)
 
-def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
-
-
-@app.route('/', methods=['GET'])
-def home():
-    return '''<h1>Distant Reading Archive</h1>
-<p>A prototype API for distant reading of science fiction novels.</p>'''
-
-
-@app.route('/books/all', methods=['GET'])
-def api_all():
-    conn = sqlite3.connect('books.db')
-    conn.row_factory = dict_factory
-    cur = conn.cursor()
-    all_books = cur.execute('SELECT * FROM books;').fetchall()
-
-    return jsonify(all_books)
+class Task(db.DynamicDocument):
+    meta = {
+        'collection': 'tasks'
+    }
+    description = db.StringField()
+    done = db.BooleanField()
+    taskid = db.IntField()
+    title = db.StringField()
+    expiryDate = db.StringField()
+    expiryTime = db.StringField()
 
 
 
@@ -34,91 +31,69 @@ def page_not_found(e):
     return "<h1>404</h1><p>The resource could not be found.</p>", 404
 
 
-@app.route('/books', methods=['GET'])
-def api_filter():
-    query_parameters = request.args
 
-    id = query_parameters.get('id')
-    published = query_parameters.get('published')
-    author = query_parameters.get('author')
+@app.route('/', methods=['GET'])
+def home():
+    return "<h1>Tasks</h1><p>Tasks with expiry date.</p>"
 
-    query = "SELECT * FROM books WHERE"
-    to_filter = []
 
-    if id:
-        query += ' id=? AND'
-        to_filter.append(id)
-    if published:
-        query += ' published=? AND'
-        to_filter.append(published)
-    if author:
-        query += ' author=? AND'
-        to_filter.append(author)
-    if not (id or published or author):
-        return page_not_found(404)
+@app.route('/tasks/all', methods=['GET'])
+def api_all():
+    task = Task.objects()
+    return jsonify(task)
 
-    query = query[:-4] + ';'
 
-    conn = sqlite3.connect('books.db')
-    conn.row_factory = dict_factory
-    cur = conn.cursor()
 
-    results = cur.execute(query, to_filter).fetchall()
-
-    return jsonify(results)
-
-@app.route('/books/create', methods=['POST'])
-def create_book():
-    query_parameters = request.args
-
-    id = query_parameters.get('id')
-    author = query_parameters.get('author')
-    first_sentence = query_parameters.get('first_sentence')
-    published = query_parameters.get('published')
-    title = query_parameters.get('title')
-
-    query = "INSERT INTO 'books' ('author', 'first_sentence', 'id', 'published', 'title') WHERE VALUES ("
-    to_filter = []
-
-    if author:
-        query += "'?', "
-        to_filter.append(author)
+@app.route('/tasks/<int:id>', methods=['GET'])
+def task_filter(id):
+    task = Task.objects(taskid=id).first()
+    if not task:
+        return jsonify({'error': 'data not found'})
     else:
-        query += "'', "
+        return jsonify(task)
 
-    if first_sentence:
-        query += "'?', "
-        to_filter.append(first_sentence)
-    else:
-        query += "'', "
+@app.route('/tasks/create', methods=['POST'])
+def create_record():
+    data = request.get_json()
+    task = Task(**data).save()
+    id = task.id
 
-    if id:
-        query += "'?', "
-        to_filter.append(id)
-    else:
-        query += "'', "
+    return {'id': str(id)}, 200
+    # record = json.loads(request.data)
+    # task = Task(taskid=record['id'],
+    #             description=record['description'],
+    #             title=record['title'],
+    #             done=record['done'],
+    #             expiryDate=record['expiryDate'],
+    #             expiryTime=record['expiryTime'])
+    # task.save()
+    # return jsonify(task)
 
-    if published:
-        query += "'?', "
-        to_filter.append(published)
-    else:
-        query += "'', "
+@app.route('/tasks/update/<int:id>', methods=['PUT'])
+def update_record(id):
+    data = request.get_json()
+    Task.objects.get(taskid=id).update(**data)
 
-    if title:
-        query += "'?', "
-        to_filter.append(title)
+    return '', 200
+    # record = json.loads(request.data)
+    # task = Task.objects(taskid=record['id']).first()
+    # if not task:
+    #     return jsonify({'error': 'data not found'})
+    # else:
+    #     task.update(expiryTime=record['expiryTime'])
+    # return jsonify(task)
 
-    if not (author or first_sentence or id or published or title):
-        return page_not_found(404)
+@app.route('/tasks/delete/<int:id>', methods=['DELETE'])
+def delete_record(id):
+    Task.objects.get(taskid=id).delete()
+    return '', 200
 
-    query = query[:-2] + ';'
-
-    conn = sqlite3.connect('books.db')
-    conn.row_factory = dict_factory
-    cur = conn.cursor()
-
-    results = cur.execute(query, to_filter).fetchall()
-
-    return jsonify(results), 201
+    # record = json.loads(request.data)
+    # task = Task.objects(taskid=record['id']).first()
+    # if not task:
+    #     return jsonify({'error': 'data not found'})
+    # else:
+    #     task.delete()
+    # return jsonify(task)
 
 app.run()

@@ -19,8 +19,8 @@ tasks = [
      "done": False,
      "id": 1,
      "title": "Buy groceries",
-     "expiryDate": "01/01/2021",
-     "expiryTime": "20:00"},
+     "expiryDate": "27/01/2021",
+     "expiryTime": "20:17"},
 ]
 
 @app.route('/', methods=['GET'])
@@ -118,7 +118,7 @@ def check_expiry():
     fif_minutes = datetime.timedelta(minutes=15)
     fut_time = now + fif_minutes
     exprSoon = [task for task in tasks if fut_time.strftime("%d/%m/%Y") == task['expiryDate']]
-    exprNow = [task for task in tasks if fut_time.strftime("%H:%M") == task['expiryTime']]
+    exprNow = [task for task in exprSoon if fut_time.strftime("%H:%M") == task['expiryTime']]
     if len(exprNow) == 0:
         return ('', 204)
     else:
