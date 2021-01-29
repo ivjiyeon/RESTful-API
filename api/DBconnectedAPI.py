@@ -35,7 +35,7 @@ def page_not_found(e):
 
 @app.route('/', methods=['GET'])
 def home():
-    return "<h1>Tasks</h1><p>Tasks with expiry date.</p>"
+    return "<h1>Task Management System</h1><p>Welcome to Task Management System</p>"
 
 
 @app.route('/tasks/all', methods=['GET'])
